@@ -14,7 +14,7 @@ def format_salary(value):
 #  VIEW & SEARCH EMPLOYEES
 
 def view_employees(employees=None):
-    """Prints all employees in a clean format."""
+    #Prints all employees in a clean format.
     success, result = get_all_employees()
 
     if not success:
@@ -37,7 +37,7 @@ def view_employees(employees=None):
 
 
 def search_by_department(employees=None):
-    """Searches employees by department."""
+    # Searches employees by department.
     dept = input("Enter department: ").strip()
 
     success, result = db_search_by_department(dept)
