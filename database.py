@@ -28,7 +28,10 @@ def init_db():
 
 def add_employee(emp_id, name, department, role, salary):
     try:
-        # Basic validation
+        emp_id = int(emp_id)
+        if emp_id <= 0:
+            return False, "Employee ID must be a positive number."
+
         if not str(name).strip():
             return False, "Name cannot be empty."
         if not str(department).strip():
@@ -49,7 +52,7 @@ def add_employee(emp_id, name, department, role, salary):
         return True, "Employee added successfully."
 
     except ValueError:
-        return False, "Salary must be a valid number."
+        return False, "Employee ID and salary must be valid numbers."
     except sqlite3.IntegrityError:
         return False, "Employee ID already exists."
     except sqlite3.Error as e:
@@ -66,7 +69,12 @@ def get_all_employees():
 
 
 def update_employee(emp_id, new_role=None, new_salary=None):
+    """
+    Keeps your original update function for role + salary updates.
+    """
     try:
+        emp_id = int(emp_id)
+
         updates = []
         values = []
 
@@ -98,13 +106,56 @@ def update_employee(emp_id, new_role=None, new_salary=None):
         return True, "Employee updated successfully."
 
     except ValueError:
-        return False, "Salary must be a valid number."
+        return False, "Employee ID and salary must be valid numbers."
+    except sqlite3.Error as e:
+        return False, f"Database error: {e}"
+
+
+def update_employee_detail(emp_id, detail, new_value):
+    """
+    Extra helper so your old update.py can still update one field at a time
+    with very small changes.
+    """
+    try:
+        emp_id = int(emp_id)
+        detail = str(detail).strip().lower()
+
+        allowed_fields = {"name", "department", "role", "salary"}
+        if detail not in allowed_fields:
+            return False, "Invalid detail."
+
+        if detail == "salary":
+            new_value = float(new_value)
+            if new_value < 0:
+                return False, "Salary cannot be negative."
+        else:
+            new_value = str(new_value).strip()
+            if not new_value:
+                return False, f"{detail.capitalize()} cannot be empty."
+
+        with get_connection() as conn:
+            cursor = conn.execute(
+                f"UPDATE employees SET {detail} = ? WHERE id = ?",
+                (new_value, emp_id)
+            )
+
+            if cursor.rowcount == 0:
+                return False, "Employee not found."
+
+        return True, f"Employee {detail} updated successfully."
+
+    except ValueError:
+        if str(detail).strip().lower() == "salary":
+            return False, "Salary must be a valid number."
+        return False, "Employee ID must be a number."
     except sqlite3.Error as e:
         return False, f"Database error: {e}"
 
 
 def delete_employee(emp_id):
     try:
+        emp_id = int(emp_id)
+
         with get_connection() as conn:
             cursor = conn.execute("DELETE FROM employees WHERE id = ?", (emp_id,))
             if cursor.rowcount == 0:
@@ -112,6 +163,8 @@ def delete_employee(emp_id):
 
         return True, "Employee deleted successfully."
 
+    except ValueError:
+        return False, "Employee ID must be a number."
     except sqlite3.Error as e:
         return False, f"Database error: {e}"
 
@@ -124,7 +177,7 @@ def search_by_department(department):
         with get_connection() as conn:
             rows = conn.execute("""
                 SELECT * FROM employees
-                WHERE department LIKE ?
+                WHERE department = ? COLLATE NOCASE
                 ORDER BY id
             """, (department.strip(),)).fetchall()
 
@@ -136,6 +189,8 @@ def search_by_department(department):
 
 def get_employee_by_id(emp_id):
     try:
+        emp_id = int(emp_id)
+
         with get_connection() as conn:
             row = conn.execute(
                 "SELECT * FROM employees WHERE id = ?",
@@ -147,5 +202,7 @@ def get_employee_by_id(emp_id):
 
         return True, row
 
+    except ValueError:
+        return False, "Employee ID must be a number."
     except sqlite3.Error as e:
         return False, f"Database error: {e}"
